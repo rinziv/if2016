@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>Trajectories Visualization</title>
+
+    <!-- Bootstrap -->
+    <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+		<link rel="stylesheet" href="https://npmcdn.com/leaflet@0.7.7/dist/leaflet.css" />
+		
+	<style>
+
+	svg {
+	  font: 10px sans-serif;
+	}
+	
+	.trj path {
+		fill: none;
+		stroke: #d95f0e;
+		stroke-width: 3px;
+		stroke-opacity: 0.2;
+	}
+
+	</style>
+	
+  </head>
+  <body>
+	<div class="jumbotron">
+		<div class="container">
+			<h1>Trajectories </h1>
+		</div>
+	</div>
+	
+	<div class="container">
+		
+		<!-- Example row of columns -->
+		<div class="row">
+			<div class="col-sm-8">
+				<div id="measureSelector">
+					
+				</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-sm-12">
+				<div id="viz" style="height:720px"></div>
+			</div>
+		</div>
+	</div>
+	<hr>
+
+	<footer>
+		<div class="container">
+		<p></p>
+		</div>
+	</footer>
+	</div>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="./assets/js/jquery-1.11.3.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="./assets/js/bootstrap.min.js"></script>
+	<!-- D3.js library -->
+	<script src="./assets/js/d3.min.js"></script>
+	<script src="./assets/js/colorbrewer.js" type="text/javascript" charset="utf-8"></script>
+	<script src="./assets/js/queue.v1.min.js"></script>
+	<!-- Latest compiled and minified JavaScript -->
+	<script src="./assets/js/bootstrap-select.min.js"></script>
+	
+	<script src="https://npmcdn.com/leaflet@0.7.7/dist/leaflet.js"></script>
+	
+	<script src="//d3js.org/topojson.v1.min.js"></script>
+	<script src="assets/js/map.js" type="text/javascript" charset="utf-8"></script>
+	<script src="assets/js/L.D3SvgOverlay.min.js"></script>
+	
+	<script>
+
+	var width = 960,
+		height = 1100;
+
+	var formatNumber = d3.format(",d");
+
+	var traj = [];
+	var nodes = {};
+	var lp;
+	
+
+	var precision = 10000;
+
+
+
+	var map = L.map("viz", {center: [46.81509864599243, 8.3221435546875], zoom: 2});
+	var tiles = L.tileLayer('http://stamen-tiles-{s}.a.ssl.fastly.net/toner-lite/{z}/{x}/{y}.{ext}', {
+			attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+			subdomains: 'abcd',
+			minZoom: 0,
+			maxZoom: 20,
+			ext: 'png'
+		});
+	tiles.addTo(map);
+
+	var points = [];
+
+	var pointsOverlay = L.d3SvgOverlay(function(sel, proj) {
+		var upd = sel.selectAll('circle').data(points);
+		upd.enter()
+			.append('circle')
+			.attr('cx',function(d){return proj.latLngToLayerPoint(new L.LatLng(d.node.lat,d.node.lon)).x;})
+			.attr('cy',function(d){return proj.latLngToLayerPoint(new L.LatLng(d.node.lat,d.node.lon)).y;})
+			.attr('r',5 / proj.scale)
+			.attr('stroke','black')
+			.attr('stroke-width',1 / proj.scale)
+			.attr('fill','blue');
+		upd.attr('stroke-width', 1 / proj.scale)
+			.attr('r',5 / proj.scale);
+	});
+	
+	d3.csv("./data/trips_CNR.csv",function(d){
+		if(d.status=="e"){
+			traj.push(lp);
+			return traj;
+		}
+		var lat = +d.lat;//Math.round(+d.lat * 100000) / 100000;
+		var lon = +d.lon; //Math.round(+d.lon * 100000) / 100000;
+		var idx = (Math.round(+d.lat * precision) / precision)+'_'+(Math.round(+d.lon * precision) / precision);
+		var node = nodes[idx] || (nodes[idx]={lat:lat, lon:lon, count:0});
+		
+		node.count +=1;
+		
+		var p = {
+			status:d.status,
+			// lat: lat,
+			// lon: lon,
+			node: node,
+		};
+		switch(d.status){
+			case "a": traj = [p];
+			break;
+			case "z": lp = p;
+			break;
+			case "p": traj.push(p);
+		}
+	
+	},function(error, data){
+		console.log(data);
+		console.log(nodes);
+		// m.trajectories(data);
+// 		m.tesselation(nodes);
+		points = data[0];
+		console.log(points);
+		pointsOverlay.addTo(map)
+		
+	});
+// d3.select("#viz").call(m);
+
+	d3.select(self.frameElement).style("height", height + "px");
+	
+	</script>
+  </body>
+</html>
